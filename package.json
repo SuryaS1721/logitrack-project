@@ -1,0 +1,19 @@
+{
+  "name": "logitrack-root",
+  "version": "1.0.0",
+  "description": "LogiTrack Mini Logistics & Order Management System - Monorepo",
+  "main": "index.js",
+  "scripts": {
+    "install-all": "npm install && npm i --prefix backend && npm i --prefix frontend",
+    "backend": "npm start --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "dotenv": "^17.4.2",
+    "mongoose": "^9.6.2"
+  },
+  "author": "Antigravity",
+  "license": "MIT"
+}

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: logitrack-mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - logitrack-network
+    restart: always
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  logitrack-network:
+    driver: bridge

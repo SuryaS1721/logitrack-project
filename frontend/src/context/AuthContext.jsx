@@ -1,58 +1,130 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
-import api from '../api/axios'
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { authAPI } from '../services/api';
 
-const AuthContext = createContext(null)
+const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Synchronize authentication validation on startup
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        try {
+          // Verify token against database profile
+          const res = await authAPI.getMe();
+          setUser(res.data.user);
+          setToken(storedToken);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Initial token verification failed:', error.message);
+          // Token is invalid, purge local session cache
+          logoutAction();
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+
+    // Listen to session expiry events fired by our Axios interceptors
+    const handleAuthLogout = () => {
+      logoutAction();
+    };
+
+    window.addEventListener('auth-logout', handleAuthLogout);
+    return () => {
+      window.removeEventListener('auth-logout', handleAuthLogout);
+    };
+  }, []);
+
+  const logoutAction = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  /**
+   * Register a new account
+   */
+  const register = async (userData) => {
+    setLoading(true);
     try {
-      const stored = localStorage.getItem('user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
-  })
-
-  const isAuthenticated = !!user && !!localStorage.getItem('access_token')
-
-  // ── Login ────────────────────────────────────────────────────────────────
-  const login = useCallback(async (username, password) => {
-    const response = await api.post('/auth/login/', { username, password })
-    const { access, refresh, user: userData } = response.data
-
-    localStorage.setItem('access_token', access)
-    localStorage.setItem('refresh_token', refresh)
-    localStorage.setItem('user', JSON.stringify(userData))
-    setUser(userData)
-    return userData
-  }, [])
-
-  // ── Logout ───────────────────────────────────────────────────────────────
-  const logout = useCallback(async () => {
-    try {
-      const refresh = localStorage.getItem('refresh_token')
-      await api.post('/auth/logout/', { refresh })
-    } catch {
-      // Ignore errors during logout
+      const res = await authAPI.register(userData);
+      const { user: newUser, token: newToken } = res.data;
+      
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      setToken(newToken);
+      setUser(newUser);
+      setIsAuthenticated(true);
+      return newUser;
+    } catch (error) {
+      throw error;
     } finally {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('user')
-      setUser(null)
+      setLoading(false);
     }
-  }, [])
+  };
+
+  /**
+   * Log in an existing user
+   */
+  const login = async (credentials) => {
+    setLoading(true);
+    try {
+      const res = await authAPI.login(credentials);
+      const { user: loadedUser, token: newToken } = res.data;
+      
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(loadedUser));
+      
+      setToken(newToken);
+      setUser(loadedUser);
+      setIsAuthenticated(true);
+      return loadedUser;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Log out currently active session
+   */
+  const logout = () => {
+    logoutAction();
+  };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isAuthenticated,
+        loading,
+        login,
+        register,
+        logout
+      }}
+    >
       {children}
     </AuthContext.Provider>
-  )
-}
+  );
+};
 
-export function useAuth() {
-  const context = useContext(AuthContext)
+// Custom Hook to invoke auth context operations instantly
+export const useAuth = () => {
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be consumed within an AuthProvider element');
   }
-  return context
-}
+  return context;
+};
