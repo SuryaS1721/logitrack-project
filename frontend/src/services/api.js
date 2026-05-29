@@ -47,11 +47,11 @@ API.interceptors.response.use(
 // Authentication Endpoint Actions
 export const authAPI = {
   register: async (userData) => {
-    const res = await API.post('/auth/register', userData);
+    const res = await API.post('/api/auth/register', userData);
     return res.data;
   },
   login: async (credentials) => {
-    const res = await API.post('/auth/login', credentials);
+    const res = await API.post('/api/auth/login', credentials);
     return res.data;
   },
   getMe: async () => {
