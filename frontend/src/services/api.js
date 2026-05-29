@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Configure standard API instance
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://logitrack-project.onrender.com/api',
   timeout: 15000,
 });
 
@@ -47,11 +47,11 @@ API.interceptors.response.use(
 // Authentication Endpoint Actions
 export const authAPI = {
   register: async (userData) => {
-    const res = await API.post('/api/auth/register', userData);
+    const res = await API.post('/auth/register', userData);
     return res.data;
   },
   login: async (credentials) => {
-    const res = await API.post('/api/auth/login', credentials);
+    const res = await API.post('/auth/login', credentials);
     return res.data;
   },
   getMe: async () => {
